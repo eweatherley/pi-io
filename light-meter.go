@@ -2,12 +2,24 @@ package main
 
 import (
 	"time"
+	"github.com/kidoman/embd"
 	"fmt"
 	"math"
+	"github.com/stianeikeland/go-rpio"
 )
+
+var pin_a = 18
+var pin_b = 23
+var pinA = rpio.Pin(pin_a)
+var pinB = rpio.Pin(pin_b)
 
 func discharge() {
 	fmt.Println("Discharging...")
+
+	rpio.PinMode(pinA, rpio.Input)
+	rpio.PinMode(pinB, rpio.Output)
+	rpio.WritePin(pinB, rpio.Low);
+
 	time.Sleep(time.Duration(100) * time.Millisecond)
 	fmt.Println("Discharged...")
 }
@@ -40,6 +52,7 @@ func readResistence() float64 {
 }
 
 func main() {
+	_ := embd.InitGPIO()
 	value := lightFromR(analogRead());
 	fmt.Print(value);
 }
