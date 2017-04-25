@@ -7,12 +7,23 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var blinker Blinker
 
+
+func output(c chan int) {
+	seconds := <-c
+	fmt.Printf("Outputting Hi for %d s\n", seconds)
+	time.Sleep(time.Duration(seconds) * time.Second)
+	fmt.Println("Finished outputting Hi")
+}
+
 func main() {
 	var blinker Blinker
+	c := make(chan int)
+	go output(c)
 	err := embd.InitGPIO()
 	if err != nil {
 		blinker = new (MockBlinker)
@@ -20,15 +31,18 @@ func main() {
 		blinker = new (GPIOBlinker)
 	}
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter number: ")
-	text, _ := reader.ReadString('\n')
+	for {
+		fmt.Print("Enter number: ")
+		text, _ := reader.ReadString('\n')
 
-	intValue, err := strconv.Atoi(strings.TrimRight(text, "\n"))
-	if err != nil {
-		fmt.Println(err)
+		intValue, err := strconv.Atoi(strings.TrimRight(text, "\n"))
+		if err != nil {
+			fmt.Println(err)
+		}
+		//fmt.Println(intValue)
+		c <- intValue
+		fmt.Println(blinker.Blink(intValue))
 	}
-	fmt.Println(intValue)
-	fmt.Println(blinker.Blink(intValue))
 }
 
 
