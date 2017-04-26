@@ -5,20 +5,17 @@ import (
 	"github.com/kidoman/embd"
 	"fmt"
 	"math"
-	"github.com/stianeikeland/go-rpio"
 )
 
 var pin_a = 18
 var pin_b = 23
-var pinA = rpio.Pin(pin_a)
-var pinB = rpio.Pin(pin_b)
 
-func discharge() {
+func discharge(pinA embd.DigitalPin, pinB embd.DigitalPin) {
 	fmt.Println("Discharging...")
 
-	rpio.PinMode(pinA, rpio.Input)
-	rpio.PinMode(pinB, rpio.Output)
-	rpio.WritePin(pinB, rpio.Low);
+	pinA.SetDirection(embd.In)
+	pinB.SetDirection(embd.Out)
+	pinB.Write(embd.Low)
 
 	time.Sleep(time.Duration(100) * time.Millisecond)
 	fmt.Println("Discharged...")
@@ -28,17 +25,22 @@ func lightFromR(R int64) float64 {
 	return math.Log(float64(1000000)/float64(R)) * 10.0
 }
 
-func chargeTime() int64 {
-	// GPIO setup
+func chargeTime(pinA embd.DigitalPin, pinB embd.DigitalPin) int64 {
+	pinA.SetDirection(embd.Out)
+	pinB.SetDirection(embd.In)
+	risen := make(chan interface{})
 	t1 := time.Now();
-	time.Sleep(time.Duration(100) * time.Millisecond)
-	return int64(time.Since(t1)/time.Millisecond);
+	pinB.Watch(embd.EdgeRising, func(pin embd.DigitalPin) {
+		risen <- pin
+	})
+	_ := <- risen
+	return int64(time.Since(t1)/time.Millisecond)
 
 }
 
-func analogRead() int64 {
-	discharge()
-	return int64(chargeTime())
+func analogRead(pinA embd.DigitalPin, pinB embd.DigitalPin) int64 {
+	discharge(pinA, pinB)
+	return int64(chargeTime(pinA, pinB))
 }
 
 func readResistence() float64 {
@@ -53,6 +55,9 @@ func readResistence() float64 {
 
 func main() {
 	_ := embd.InitGPIO()
-	value := lightFromR(analogRead());
+	pinA, _ := embd.NewDigitalPin(pin_a)
+	pinB, _ := embd.NewDigitalPin(pin_b)
+	defer embd.CloseGPIO()
+	value := lightFromR(analogRead(pinA, pinB));
 	fmt.Print(value);
 }
